@@ -22,6 +22,12 @@
 
 #define PIN_THERM 0// Pin connected to the thermostat relay (normally open)
 
+//Smart grid control - Optional:
+//Uncomment and set to enable SG mqtt functions
+//#define PIN_SG1 32// Pin connected to dry contact SG 1 relay (normally open)
+//#define PIN_SG2 33// Pin connected to dry contact SG 2 relay (normally open)
+
+
 #define MAX_MSG_SIZE 4096//max size of the json message sent in mqtt 
 
 //Uncomment this line if the JSON message should be in a Json Table format []. Use only for IOBroker Vis. 

@@ -170,13 +170,37 @@ Other users installations are described [in this issue](/../../issues/17).
 
 On a Rotex this would connect to J16 Pin 1 and 2. Note: RT needs to be switched ON in the heatpump Connection menu. Heating will be ON if pins are connected, else no heating, so connect to the NC (normally closed) of the relay. 
 
-### Troubleshooting
+## Step 4 (optional) - Smart grid features
+ESPaltherma can also integrate with SG-Ready options of your heat pump. To do so, uncomment and configure `PIN_SG1` and `PIN_SG2` in `src/setup.c` and send one of the allowed values (0..3) to MQTT channel `espaltherma/sg/set`. Current SG mode will be available in `espaltherma/sg/state`.  
 
-#### Specific issues
+Of course, you will need to use 2 more relays to open/close SG1 and SG2 contacts of your heat pump.  
+
+I found that using 5V supply pin of X10A provides enough power for my ESP32 and both relays, but your mileage may vary.  
+
+On a Roter SG1 and SG2 contacts are located in J8 connector, pin 5-6 (Smart Grid) and 11-12 (EVU) respectively.  
+
+Once configured and connected, your heat pump will work like this:  
+
+| sg/set value| SG1   | SG2   | SG-Mode              | Working mode | Typical result |
+| ----------- | ----- | ----- | -------------------- | ------------ | -------------- |
+| 0           | open  | open  | 0 - normal operation | normal working mode        | HP works like if SG features are disabled/not used |
+| 1           | open  | close | 1 - Forced OFF       | Hp is forced OFF           | Heating and DHW will be turned OFF - *Beware that your comfort may be negatively affected by this working mode* |
+| 2           | close | open  | 2 - Recommended ON   | Hp is recommended to be ON | HP will increase DHW setpoint as well as LW setpoint (documentation says +5 °C, but my tests actually show +6 °C) |
+| 3           | close | close | 3 - Force ON         | Hp is forced ON            | HP will increase DHW setpoint and will use its full power to heat DHW (to 70 °C) |
+  
+*Note that In SG3 mode your HP will really be power hungry so make sure to enable it only when electricity cost is low (ideally free) or be prepared to get a high bill!*  
+  
+Depending on your HP model, SG3 might be configurable in "ECO mode", "Normal mode" or "Comfort mode". I do not have any documentation about different modes, so I just left the default value (Normal mode). From my tests, this do not seem to apply to other SG working modes.
+
+Note: Smart Grid needs to be switched ON in the heatpump configuration menu, otherwise SG1 and SG2 contacts are not evaluated.
+
+# Troubleshooting
+
+## Specific issues
 
 - If, when using an M5StickC (or M5Stack), the ESP32 is unresponsive, upload fails etc. Make sure that you change the ![default env on pio](doc/images/defaultenv.png) environment to ![end m5](doc/images/m5envv.png) on the status bar. Otherwise the default serial port in setup.h conflicts with the PSRAM of M5.
 
-#### Generic issues
+## Generic issues
 
 Possible generic issues could be: improper wifi signal, unsupported protocol, unsupported GPIOs for Serial (stick to default RX2/TX2).
 
@@ -184,7 +208,7 @@ ESPAltherma generates logs on the main serial port (USB). Connect to the ESP32 a
 
 ESPAltherma also generates logs on MQTT. If Wifi and MQTT is not the issue, look at the logs on the topic `espalterma/log`.
 
-### Note on voltage
+## Note on voltage
 
 The serial port of X10A is TTL 5V, where the ESP32 is 3.3V. Your ESP32 might not be 5V tolerant. If you want to play it safe, you should use a level shifter to convert Daikin TX - RX ESP line from 5V to 3.3V.
 
@@ -194,7 +218,7 @@ Some users reported that a ROTEX did not have a stable 5v that could be used to 
 
 If you are using an M5StickC you can select the PlatformIO env:m5stickc (or env_m5stickcplus for that version), then ESPAltherna will also report on the voltage and consumption of the M5StickC in the reported values.
 
-## Integrating with Home Assitant
+# Integrating with Home Assitant
 
 ESPAltherma integrates easily with Home Assistant using [mqtt discovery](https://www.home-assistant.io/docs/mqtt/discovery/).
 
@@ -206,7 +230,7 @@ After setup, ESPAltherma will generate 2 entities on Home Assistant:
 
 - `switch.altherma` activates the relay connected to the `PIN_THERM`
 
-### Declaring sensor entities
+## Declaring sensor entities
 
 In Home Assistant, all values reported by ESPAltherma are `attribute`s of the `entity` sensor.althermasensors.
 
@@ -236,7 +260,7 @@ After restarting Home Assistant, these entities can be added to an history card:
 
 ![](doc/images/historycard.png)
 
-### A Climate entity
+## A Climate entity
 
 To control heating through the On/Off switch, declare a Climate (aka thermostat) entity monitoring a temperature sensor.
 
@@ -260,7 +284,7 @@ Then, add a Thermostat card somewhere:
 
 ![ha thermostat](doc/images/thermostat.png)
 
-### Calculating COP
+## Calculating COP
 
 The information returned by ESPAltherma allows to calculate the coefficient of performance (COP). It is the ratio of the heat delivered by your heat pump to the energy consumed by it.
 

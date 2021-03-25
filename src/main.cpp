@@ -18,8 +18,8 @@
 #include "mqtt.h"
 
 Converter converter;
-char registryIDs[32];//Holds the registrys to query
-bool busy=false;
+char registryIDs[32]; //Holds the registrys to query
+bool busy = false;
 
 #if defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_Plus)
 long LCDTimeout = 40000;//Keep screen ON for 40s then turn off. ButtonA will turn it On again.
@@ -43,9 +43,8 @@ void updateValues(char regID)
   converter.getLabels(regID, labels, num);
   for (size_t i = 0; i < num; i++)
   {
-    snprintf(jsonbuff + strlen(jsonbuff),MAX_MSG_SIZE - strlen(jsonbuff), "\"%s\":\"%s\",", labels[i]->label, labels[i]->asString);
+    snprintf(jsonbuff + strlen(jsonbuff), MAX_MSG_SIZE - strlen(jsonbuff), "\"%s\":\"%s\",", labels[i]->label, labels[i]->asString);
   }
-
 }
 
 uint16_t loopcount =0;
@@ -54,7 +53,8 @@ void extraLoop()
 {
   client.loop();
   ArduinoOTA.handle();
-  while (busy){//Stop processing during OTA
+  while (busy)
+  { //Stop processing during OTA
     ArduinoOTA.handle();
   }
 
@@ -100,6 +100,7 @@ void initRegistries(){
   {
     if (!contains(registryIDs, sizeof(registryIDs), label.registryID))
     {
+      mqttSerial.printf("Adding registry 0x%2x to be queried.\n", label.registryID);
       registryIDs[i++] = label.registryID;
     }
   }
@@ -116,7 +117,6 @@ void initRegistries(){
   //   registryIDs[i] = 0xFF;
   // }
   //calling for registry values
-
 }
 
 void setupScreen(){
@@ -146,17 +146,31 @@ void setup()
   MySerial.begin(9600, SERIAL_8E1, RX_PIN, TX_PIN);
   pinMode(PIN_THERM, OUTPUT);
   digitalWrite(PIN_THERM, HIGH);
+
+#ifdef PIN_SG1
+  //Smartgrid pins
+  pinMode(PIN_SG1, OUTPUT);
+  pinMode(PIN_SG2, OUTPUT);
+  digitalWrite(PIN_SG1, LOW);
+  digitalWrite(PIN_SG2, LOW);
+#endif
 #ifdef ARDUINA_M5Stick_C_Plus
   gpio_pulldown_dis(GPIO_NUM_25);
   gpio_pullup_dis(GPIO_NUM_25);
 #endif
 
   EEPROM.begin(10);
+  readEEPROM();//Restore previous state
   mqttSerial.print("Setting up wifi...");
   setup_wifi();
   ArduinoOTA.setHostname("ESPAltherma");
   ArduinoOTA.onStart([]() {
     busy = true;
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    mqttSerial.print("Error on OTA - restarting");
+    esp_restart();
   });
   ArduinoOTA.begin();
 
@@ -168,8 +182,6 @@ void setup()
   mqttSerial.begin(&client, "espaltherma/log");
   reconnect();
   mqttSerial.println("OK!");
-
-  readEEPROM();
 
   initRegistries();
   mqttSerial.print("ESPAltherma started!");
